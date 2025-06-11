@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Order Page</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f5f5f5;
+      margin: 0;
+      padding: 20px;
+    }
+    .container {
+      max-width: 600px;
+      margin: auto;
+      background: #fff;
+      padding: 20px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    h1, h2 {
+      margin-bottom: 15px;
+      text-align: center;
+    }
+    label {
+      display: block;
+      margin-top: 15px;
+      font-weight: bold;
+    }
+    input, select {
+      width: 100%;
+      padding: 10px;
+      margin-top: 5px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    .btn {
+      display: block;
+      width: 100%;
+      background: #f57224;
+      color: white;
+      border: none;
+      padding: 15px;
+      font-size: 1em;
+      margin-top: 25px;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+    .btn:hover {
+      background: #e55b1d;
+    }
+    #paymentNotice {
+      margin-top: 10px;
+      padding: 10px;
+      background-color: #fff4e5;
+      border-left: 4px solid #f57224;
+      color: #333;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h1><b>Place Your Order</b></h1>
+
+  <h2>Customer Information</h2>
+
+  <form id="orderForm" onsubmit="submitOrder(event)">
+    <label for="name">Full Name</label>
+    <input type="text" id="name" required>
+
+    <label for="address">Delivery Address</label>
+    <input type="text" id="address" required>
+
+    <label for="phone">Phone Number</label>
+    <input type="tel" id="phone" required pattern="01[3-9]\d{8}" placeholder="e.g., 01XXXXXXXXX">
+
+    <label for="location">Delivery Location</label>
+    <select id="location" required onchange="checkLocation()">
+      <option value="">-- Select Location --</option>
+      <option value="Dhaka">Dhaka</option>
+      <option value="Outside Dhaka">Outside Dhaka</option>
+    </select>
+
+    <p id="locationNotice" style="color: red; font-weight: bold; display: none;">
+      Cash on Delivery is unavailable for Outside Dhaka.<br>
+      Please pay <strong>150 Taka</strong> delivery charge in advance via Bkash or Nagad to <strong>01984657595</strong>.
+    </p>
+
+    <label for="payment">Payment Method</label>
+    <select id="payment" required onchange="checkPayment()">
+      <option value="cod">Cash on Delivery</option>
+      <option value="bkash">Bkash</option>
+      <option value="nagad">Nagad</option>
+    </select>
+
+    <div id="paymentNotice"></div>
+
+    <div id="lastFourSection" style="display: none; margin-top: 10px;">
+      <label for="lastFourDigits">Last 4 digits of Bkash/Nagad number</label>
+      <input type="text" id="lastFourDigits" placeholder="Enter last 4 digits" maxlength="4" pattern="\d{4}" inputmode="numeric">
+    </div>
+
+    <button type="submit" class="btn" id="submitBtn">Place Order</button>
+  </form>
+</div>
+
+<script>
+  const SHEET_URL = "https://script.google.com/macros/s/AKfycbwgorh6-UVDxiSOZ66YfqnNwNB0BAneZoXjFmU4sTFz5NtBRtieK0CeuJwW0IHW66DWxA/exec";
+
+  function checkLocation() {
+    const location = document.getElementById('location').value;
+    const paymentSelect = document.getElementById('payment');
+    const codOption = paymentSelect.querySelector('option[value="cod"]');
+    const notice = document.getElementById('locationNotice');
+
+    if (location === "Outside Dhaka") {
+      codOption.disabled = true;
+      if (paymentSelect.value === "cod") {
+        paymentSelect.value = "bkash";
+      }
+      notice.style.display = 'block';
+    } else {
+      codOption.disabled = false;
+      notice.style.display = 'none';
+    }
+
+    checkPayment();
+  }
+
+  function checkPayment() {
+    const payment = document.getElementById('payment').value;
+    const location = document.getElementById('location').value;
+    const paymentNotice = document.getElementById('paymentNotice');
+    const lastFourSection = document.getElementById('lastFourSection');
+
+    if (payment === "bkash" || payment === "nagad") {
+      const method = payment.charAt(0).toUpperCase() + payment.slice(1);
+      paymentNotice.style.display = "block";
+      lastFourSection.style.display = "block";
+
+      if (location === "Outside Dhaka") {
+        paymentNotice.innerHTML = `➔ Please send <strong>150 Taka</strong> to <strong>01984657595</strong> via <strong>${method}</strong>.`;
+      } else if (location === "Dhaka") {
+        paymentNotice.innerHTML = `➔ Please send <strong>product price with delivery</strong> to <strong>01984657595</strong> via <strong>${method}</strong>.`;
+      } else {
+        paymentNotice.innerHTML = `➔ Please send payment to <strong>01984657595</strong> via <strong>${method}</strong>.`;
+      }
+    } else {
+      paymentNotice.style.display = "none";
+      lastFourSection.style.display = "none";
+    }
+  }
+
+  function submitOrder(event) {
+    event.preventDefault();
+
+    const name = document.getElementById('name').value.trim();
+    const address = document.getElementById('address').value.trim();
+    const phone = document.getElementById('phone').value.trim();
+    const location = document.getElementById('location').value;
+    const payment = document.getElementById('payment').value;
+    const lastFourDigits = document.getElementById('lastFourDigits').value.trim();
+    const submitBtn = document.getElementById('submitBtn');
+
+    if ((payment === "bkash" || payment === "nagad") && !/^\d{4}$/.test(lastFourDigits)) {
+      alert("Please enter the last 4 digits of your payment number.");
+      return;
+    }
+
+    const now = new Date();
+    const orderDate = now.toLocaleDateString();
+    const orderTime = now.toLocaleTimeString();
+
+    const orderData = {
+      name,
+      address,
+      phone,
+      location,
+      payment,
+      lastFourDigits: (payment === "bkash" || payment === "nagad") ? lastFourDigits : '',
+      orderDate,
+      orderTime
+    };
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Submitting...";
+
+    fetch(SHEET_URL, {
+      method: 'POST',
+      body: JSON.stringify(orderData),
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    })
+    .then(res => res.json())
+    .then(response => {
+      alert("✅ Order placed successfully!");
+      document.getElementById('orderForm').reset();
+      document.getElementById('paymentNotice').style.display = "none";
+      document.getElementById('lastFourSection').style.display = "none";
+    })
+    .catch(error => {
+      alert("❌ Failed to send order.");
+      console.error(error);
+    })
+    .finally(() => {
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Place Order";
+    });
+  }
+</script>
+
+</body>
+</html>
